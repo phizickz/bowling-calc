@@ -43,18 +43,49 @@ func isStrike(frame *frame) bool {
 	return false
 }
 
-func calculateFrameScore(frames *frames, i int) {
-	if isStrike {
+type bonus struct {
+	originFrame    *frame
+	eligibleThrows int
+}
 
-	}
-	else if isSpare {
+func calculateFrameScore(frames *frames) {
+	accumulatedBonuses := []bonus{}
+	for _, frame := range frames.frame {
+		if frame == nil {
+			continue
+		}
+		score := 0
+		if len(accumulatedBonuses) > 0 {
+			for _, b := range accumulatedBonuses {
+				if b.eligibleThrows > 0 {
+					b.originFrame.score += frame.throwOne
+					b.eligibleThrows -= 1
+				}
+				if b.eligibleThrows > 0 {
+					b.originFrame.score += frame.throwTwo
+					b.eligibleThrows -= 1
+				}
+			}
+		}
+		if isStrike(frame) {
+			score += 10
+			accumulatedBonuses = append(accumulatedBonuses, bonus{frame, 2})
+		} else if isSpare(frame) {
+			score += 10
+			accumulatedBonuses = append(accumulatedBonuses, bonus{frame, 1})
+		} else {
+			score += frame.throwOne + frame.throwTwo
+		}
 
+		frame.score = score
 	}
-	else {
-	score := frames.frame[i].throwOne + frames.frame[i].throwTwo
-	}
+}
 
-	frames.frame[i].score = score
+func frameToString(frame *frame) {
+	fmt.Printf("Frame: %v - ", frame.seq)
+	fmt.Printf("Throws: %v, %v. ", frame.throwOne, frame.throwTwo)
+	fmt.Printf("Score: %v.", frame.score)
+	fmt.Printf("\n")
 }
 
 func main() {
@@ -70,7 +101,6 @@ func main() {
 		t1 = throw(totalPins)
 		if currFrame == 10 && t1 == 10 {
 			frames.frame[i] = makeFrame(currFrame, t1, t2)
-			calculateFrameScore(frames, i)
 			continue
 		}
 
@@ -78,12 +108,18 @@ func main() {
 			t2 = throw(totalPins - t1)
 		}
 		frames.frame[i] = makeFrame(currFrame, t1, t2)
-		calculateFrameScore(frames, i)
 		if currFrame >= 10 {
 			break
 		}
 	}
-	for i := range frames.frame {
-		fmt.Println(frames.frame[i])
+	var total int
+	calculateFrameScore(frames)
+	for _, f := range frames.frame {
+		if f == nil {
+			continue
+		}
+		frameToString(f)
+		total += f.score
 	}
+	fmt.Printf("Total score: %v", total)
 }
